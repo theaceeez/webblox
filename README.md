@@ -69,7 +69,6 @@ flowchart LR
 | `server/blox.ts` | `createBloxHandler(paths)`: serves `/blox/*` with the isolation headers, sends the gzip copy of `WebClient.wasm`, falls back to Roblox's CDN for engine files missing on disk. |
 | `server.ts` | Standalone server: `/blox/` plus a Wisp server at `/wisp/` limited to Roblox hosts on port 443. |
 | `scripts/fetch-webblox.mjs` | Downloads the engine from `setup.rbxcdn.com` (resumable, size-checked). |
-| `integrations/scramjet/` | Optional: a Scramjet 2 frame plugin that turns Play on roblox.com into `/blox/`. |
 
 ## Engine
 
@@ -114,45 +113,17 @@ resumes. A new version replaces the old one. Rerun it to update.
    Roblox rate-limits per IP, and the IP it sees is the Wisp server's.
 4. Open `/blox/?placeId=…` in a new tab or popup, never an iframe.
 
-## Scramjet integration
-
-`integrations/scramjet/plugin.ts` is a Scramjet 2 frame plugin. Inside the
-proxy it catches every way roblox.com launches the desktop app
-(`roblox-player:` / `roblox://` URIs set as a hidden iframe `src`, passed to
-`window.open` or used as a link, and `/games/start?placeId=` by link,
-`window.open` or navigation) and opens `/blox/` on that place instead. "Join"
-on a friend looks up their presence to find the server.
-
-```ts
-import { bloxUrl, createBloxLaunchPlugin } from "./integrations/scramjet/plugin";
-
-// next to your other Scramjet controller plugins
-createBloxLaunchPlugin(plugins.ManagedPlugin, {
-  url: (launch) => bloxUrl("/blox/", launch, "wss://your.host/wisp/"),
-  // optional: open(url) => Window | null, notify(message) => void
-});
-```
-
-When `/blox/` shares an origin with the Scramjet 2 controller, `host.js` reads
-`.ROBLOSECURITY` from the controller's cookie jar (IndexedDB
-`__scramjet_controller` → `state` → `cookies`), so signing in to roblox.com in
-the proxy signs in the player too.
 
 ## Signing in
 
 Joining needs a `.ROBLOSECURITY` session (without one Roblox answers 524 "Not
-authorized"). Two ways:
-
-- **Through a Scramjet 2 proxy on the same origin:** sign in to roblox.com
-  there with "Email me a One Time Code" (password sign-in does not get
-  through the proxy). If you get a CAPTCHA, use audio mode; for 2FA, pick
-  "More options" → "Email". Then press Sign in on `/blox/`.
-- **Paste the cookie:** the sign-in prompt accepts the `.ROBLOSECURITY` value.
-  It stays in that browser's `localStorage` and is only sent to Roblox, over
-  TLS that ends in the browser.
+authorized"). Sign in to roblox.com in Chrome on a computer, copy the cookie
+from DevTools (Application → Cookies → roblox.com), and paste it into the
+sign-in prompt. It stays in that browser's `localStorage` and is only sent to
+Roblox, over TLS that ends in the browser.
 
 Using a modified client carries a small risk of an account warning from
-Roblox. Proceed with caution.
+Roblox. Test on an alt.
 
 ## Tests
 
@@ -200,12 +171,3 @@ opens, the server starts on port 8080 by itself and the engine downloads in the
 background (`/tmp/webblox-fetch.log`; `/tmp/webblox-server.log` for the server).
 In the **Ports** tab make 8080 **Public** if it isn't already, then open its
 URL. The codespace stops when idle; starting it again restarts the server.
-
-## Signing in from a phone: /browse/
-
-`/browse/` is a Scramjet 2 browser on the same site, opened on roblox.com's
-sign-in page. Sign in with "Email me a one-time code" (audio CAPTCHA if asked),
-then open `/blox/` and press **Sign in**: the player reads the session from the
-browser's cookie jar, so no cookie copying. Pressing Play on a game inside
-`/browse/` opens `/blox/` on it. The Wisp server only reaches Roblox and its
-CAPTCHA provider (Arkose Labs), so `/browse/` cannot open other sites.

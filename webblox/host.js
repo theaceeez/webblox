@@ -4,20 +4,17 @@
 // 1. Answers sw.js: every cross-origin request the engine makes arrives here
 //    and goes out over Wisp through epoxy, which runs TLS in this page, so the
 //    Wisp server never sees the session. Cookies live in a jar in localStorage.
-// 2. Takes the Roblox session (.ROBLOSECURITY) from a Scramjet 2 browser on
-//    this origin, if you signed in to roblox.com there, or asks for it.
+// 2. Asks for the Roblox session (.ROBLOSECURITY) and keeps it in the jar.
 // 3. Boots WasmPlayer.js the way Roblox's WasmLoader.js does, pointed at the
 //    engine on this server.
 //
 // ?placeId=<id> joins that experience (&gameInstanceId=<job id> one server of
-// it); without a place the page is a launcher. With a Scramjet 2 proxy,
-// roblox.com's Play button opens this page (integrations/scramjet/plugin.ts).
+// it); without a place the page is a launcher.
 
 const ROOT = new URL("./", import.meta.url);
 const ENGINE_BASE = new URL("engine", ROOT).href;
 const WISP_KEY = "blox.wisp";
 const JAR_KEY = "blox.cookies";
-const MANUAL_KEY = "blox.manual";
 // ?placeId=…&gameInstanceId=…: join that server of the place (roblox.com's
 // Join on a server or a friend). The id is a job id, a UUID in practice.
 const JOIN_SERVER = (() => {
@@ -151,12 +148,10 @@ function parseSetCookie(url, line) {
   return cookie;
 }
 
-// `manual`: pasted here rather than taken from the Scramjet browser.
-function storeSession(value, manual) {
+function storeSession(value) {
   let jar = readJar().filter((c) => c.name !== SESSION);
   jar = putCookie(jar, { name: SESSION, value, domain: "roblox.com", hostOnly: false, path: "/", expires: 0 });
   writeJar(jar);
-  localStorage.setItem(MANUAL_KEY, manual ? "1" : "0");
 }
 
 function forgetSession() {
@@ -299,50 +294,9 @@ async function sessionAccepted() {
   return result.status === 200;
 }
 
-// A Scramjet 2 browser on this origin (its controller) keeps its cookie jar in
-// IndexedDB, so signing in to roblox.com there leaves .ROBLOSECURITY where
-// this page can read it. Never creates the database when it is missing.
-function proxySession() {
-  return new Promise((resolve) => {
-    const open = indexedDB.open("__scramjet_controller");
-    open.onupgradeneeded = () => open.transaction.abort();
-    open.onerror = () => resolve(null);
-    open.onsuccess = () => {
-      const db = open.result;
-      const finish = (value) => {
-        db.close();
-        resolve(value);
-      };
-      try {
-        const get = db.transaction("state", "readonly").objectStore("state").get("cookies");
-        get.onsuccess = () => finish(sessionFromDump(get.result?.cookies));
-        get.onerror = () => finish(null);
-      } catch {
-        finish(null);
-      }
-    };
-  });
-}
-
-// The controller stores CookieJar.dump(): JSON of { [key]: { name, value, domain, … } }.
-function sessionFromDump(dump) {
-  if (typeof dump !== "string") return null;
-  let cookies;
-  try {
-    cookies = JSON.parse(dump);
-  } catch {
-    return null;
-  }
-  for (const cookie of Object.values(cookies ?? {})) {
-    if (cookie?.name !== SESSION || typeof cookie.value !== "string" || !cookie.value) continue;
-    if (/^\.?(?:[^.]+\.)*roblox\.com$/i.test(String(cookie.domain))) return cookie.value;
-  }
-  return null;
-}
-
 // Puts a candidate session in the jar and keeps it only if Roblox accepts it.
-async function trySession(value, manual) {
-  storeSession(value, manual);
+async function trySession(value) {
+  storeSession(value);
   if (await sessionAccepted()) return true;
   forgetSession();
   return false;
@@ -357,8 +311,7 @@ function askForSession(expired) {
     shade.innerHTML = `
       <form novalidate aria-labelledby="session-title">
         <h1 id="session-title"></h1>
-        <p>Sign in to roblox.com in <a href="/browse/" target="_blank" rel="opener">this site's browser</a> (choose “Email me a one-time code”), then come back and press Sign in here.</p>
-        <p>Or paste the value of your <code>.ROBLOSECURITY</code> cookie. It stays in this browser and is sent only to Roblox, encrypted end to end.</p>
+        <p>Paste the value of your <code>.ROBLOSECURITY</code> cookie. It stays in this browser and is sent only to Roblox, encrypted end to end.</p>
         <input name="cookie" type="password" autocomplete="off" spellcheck="false" aria-label=".ROBLOSECURITY (optional)" aria-describedby="session-error">
         <p class="error" id="session-error" role="alert"></p>
         <div class="actions">
@@ -385,19 +338,19 @@ function askForSession(expired) {
       event.preventDefault();
       const pasted = input.value.trim().replace(/^\.ROBLOSECURITY=/, "");
       if (pasted && !pasted.startsWith(SESSION_PREFIX)) return fail("That isn't a .ROBLOSECURITY value.");
-      const value = pasted || (await proxySession());
-      if (!value) return fail("No Roblox sign-in found in this site's proxy browser. Paste your .ROBLOSECURITY instead.");
+      if (!pasted) return fail("Paste your .ROBLOSECURITY value.");
+      const value = pasted;
       submit.disabled = true;
       let accepted = false;
       try {
-        accepted = await trySession(value, Boolean(pasted));
+        accepted = await trySession(value);
       } catch (err) {
         forgetSession();
         submit.disabled = false;
         return fail(`Couldn't reach Roblox: ${err.message || err}`);
       }
       submit.disabled = false;
-      if (!accepted) return fail(pasted ? "Roblox rejected that session." : "The sign-in in this site's proxy browser has expired. Sign in there again.");
+      if (!accepted) return fail("Roblox rejected that session.");
       shade.remove();
       resolve();
     });
@@ -406,17 +359,10 @@ function askForSession(expired) {
   });
 }
 
-// Signing in on roblox.com in the Scramjet browser is the usual way in, so that
-// session wins (an account switched there follows here), unless one was
-// pasted here on purpose. The other is the fallback.
+// Uses the saved session while Roblox still accepts it, otherwise asks.
 async function ensureSession() {
   const saved = savedSession();
-  const manual = localStorage.getItem(MANUAL_KEY) === "1";
-  const proxied = await proxySession();
-  const order = manual ? [saved, proxied] : [proxied, saved];
-  for (const value of new Set(order.filter(Boolean))) {
-    if (await trySession(value, value === saved && manual)) return;
-  }
+  if (saved && (await trySession(saved))) return;
   return askForSession(saved !== null);
 }
 

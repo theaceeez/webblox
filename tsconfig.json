@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["wisp-js.d.ts", "server.ts", "server", "integrations", "browse"]
+  "include": ["wisp-js.d.ts", "server.ts", "server"]
 }

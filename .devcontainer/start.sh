@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs on every Codespace start. Starts the server right away (so /browse/ works
-# for signing in) and downloads the Roblox engine beside it; /blox/ falls back
+# Runs on every Codespace start. Starts the server right away and downloads the
+# Roblox engine beside it; /blox/ falls back
 # to Roblox's CDN for any engine file that isn't on disk yet. Both run detached,
 # so they keep going whether or not the editor is open.
 # Logs: /tmp/webblox-server.log and /tmp/webblox-fetch.log
