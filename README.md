@@ -192,3 +192,11 @@ DOMAIN=play.example.com docker compose -f deploy/docker-compose.yml up -d --buil
 ```
 
 Open `https://<your-domain>/blox/`.
+
+## Run it on GitHub (Codespaces, free)
+
+On the repo page: **Code → Codespaces → Create codespace on main**. Setup
+installs Bun and downloads the engine (a few minutes), then the server starts
+on port 8080. In the **Ports** tab, right-click 8080 → Port visibility →
+**Public**, then open the forwarded URL with `/blox/` on the end. The
+codespace stops when idle; start it again from the same menu.

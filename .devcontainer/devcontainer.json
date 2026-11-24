@@ -1,0 +1,12 @@
+{
+  "name": "webblox",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": { "ghcr.io/devcontainers/features/node:1": {} },
+  "postCreateCommand": "curl -fsSL https://bun.sh/install | bash && ~/.bun/bin/bun install && node scripts/fetch-webblox.mjs",
+  "postAttachCommand": "~/.bun/bin/bun server.ts",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": { "label": "webblox", "onAutoForward": "openBrowser" }
+  },
+  "hostRequirements": { "storage": "32gb" }
+}
