@@ -7,13 +7,15 @@ import { resolve } from "node:path";
 import { Readable } from "node:stream";
 import { logging, server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { BLOX_PREFIX, createBloxHandler } from "./server/blox";
+import { BROWSE_PREFIX, browsePaths, createBrowseHandler } from "./server/browse";
 
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || "127.0.0.1";
 
-// The page's epoxy client opens TLS to Roblox through this; nothing else is
-// reachable, so the server is not an open proxy.
-wisp.options.hostname_whitelist = [/(^|\.)(roblox\.com|rbxcdn\.com|robloxlabs\.com)$/i];
+// The pages' epoxy clients open TLS to Roblox through this; nothing else is
+// reachable, so the server is not an open proxy. Arkose Labs serves the
+// CAPTCHA on Roblox's sign-in page, which /browse/ has to load.
+wisp.options.hostname_whitelist = [/(^|\.)(roblox\.com|rbxcdn\.com|robloxlabs\.com|arkoselabs\.com|funcaptcha\.com)$/i];
 wisp.options.port_whitelist = [443];
 logging.set_level(logging.WARN);
 
@@ -23,11 +25,17 @@ const handleBlox = createBloxHandler({
   epoxy: Bun.resolveSync("@mercuryworkshop/epoxy-transport", import.meta.dir),
 });
 
+const handleBrowse = createBrowseHandler(browsePaths(resolve(import.meta.dir, "browse"), import.meta.dir));
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   let response: Response;
   if (url.pathname === "/" || url.pathname === BLOX_PREFIX.slice(0, -1)) {
     response = new Response(null, { status: 308, headers: { location: `${BLOX_PREFIX}${url.search}` } });
+  } else if (url.pathname === BROWSE_PREFIX.slice(0, -1)) {
+    response = new Response(null, { status: 308, headers: { location: BROWSE_PREFIX } });
+  } else if (url.pathname.startsWith(BROWSE_PREFIX)) {
+    response = await handleBrowse(new Request(url, { method: req.method }), url.pathname);
   } else if (url.pathname.startsWith(BLOX_PREFIX)) {
     const headers = new Headers();
     for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);

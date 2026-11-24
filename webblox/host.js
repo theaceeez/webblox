@@ -357,7 +357,7 @@ function askForSession(expired) {
     shade.innerHTML = `
       <form novalidate aria-labelledby="session-title">
         <h1 id="session-title"></h1>
-        <p>If this site has a proxy browser, sign in to roblox.com there (choose the email one-time code), then press Sign in here.</p>
+        <p>Sign in to roblox.com in <a href="/browse/" target="_blank" rel="opener">this site's browser</a> (choose “Email me a one-time code”), then come back and press Sign in here.</p>
         <p>Or paste the value of your <code>.ROBLOSECURITY</code> cookie. It stays in this browser and is sent only to Roblox, encrypted end to end.</p>
         <input name="cookie" type="password" autocomplete="off" spellcheck="false" aria-label=".ROBLOSECURITY (optional)" aria-describedby="session-error">
         <p class="error" id="session-error" role="alert"></p>

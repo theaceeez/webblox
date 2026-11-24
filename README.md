@@ -195,8 +195,17 @@ Open `https://<your-domain>/blox/`.
 
 ## Run it on GitHub (Codespaces, free)
 
-On the repo page: **Code → Codespaces → Create codespace on main**. Setup
-installs Bun and downloads the engine (a few minutes), then the server starts
-on port 8080. In the **Ports** tab, right-click 8080 → Port visibility →
-**Public**, then open the forwarded URL with `/blox/` on the end. The
-codespace stops when idle; start it again from the same menu.
+On the repo page: **Code → Codespaces → Create codespace on main**. When it
+opens, the server starts on port 8080 by itself and the engine downloads in the
+background (`/tmp/webblox-fetch.log`; `/tmp/webblox-server.log` for the server).
+In the **Ports** tab make 8080 **Public** if it isn't already, then open its
+URL. The codespace stops when idle; starting it again restarts the server.
+
+## Signing in from a phone: /browse/
+
+`/browse/` is a Scramjet 2 browser on the same site, opened on roblox.com's
+sign-in page. Sign in with "Email me a one-time code" (audio CAPTCHA if asked),
+then open `/blox/` and press **Sign in**: the player reads the session from the
+browser's cookie jar, so no cookie copying. Pressing Play on a game inside
+`/browse/` opens `/blox/` on it. The Wisp server only reaches Roblox and its
+CAPTCHA provider (Arkose Labs), so `/browse/` cannot open other sites.
