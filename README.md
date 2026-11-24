@@ -167,3 +167,28 @@ bun run typecheck
   their CDN, not distributed here.
 - [epoxy-transport](https://github.com/MercuryWorkshop/epoxy-transport) and
   [wisp-js](https://github.com/MercuryWorkshop/wisp-js) by MercuryWorkshop.
+
+## Deploying
+
+Needs a host that runs a long-lived process with WebSockets and HTTPS. Static
+hosts (GitHub Pages, Netlify, Vercel) cannot run the Wisp server.
+
+**Fly.io**
+
+```sh
+fly launch --copy-config --no-deploy   # pick a unique app name
+fly volumes create webblox_vendor --size 1
+fly deploy
+```
+
+First boot downloads the engine (~255 MB, a minute or two) before the server
+listens. Update later with `fly secrets set WEBBLOX_UPDATE=1 && fly deploy`,
+then unset it. Pin a version with `WEBBLOX_VERSION=version-…`.
+
+**VPS (Docker + Caddy, auto HTTPS)**
+
+```sh
+DOMAIN=play.example.com docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Open `https://<your-domain>/blox/`.

@@ -1,0 +1,14 @@
+# VPS: point a domain's A record at the box, set DOMAIN, then
+#   DOMAIN=play.example.com docker compose -f deploy/docker-compose.yml up -d
+services:
+  webblox:
+    build: ..
+    restart: unless-stopped
+    volumes: [vendor:/app/vendor]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: [DOMAIN]
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddy:/data]
+volumes: { vendor: {}, caddy: {} }

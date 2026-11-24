@@ -1,0 +1,6 @@
+# Automatic HTTPS. Headers (COOP/COEP/CORP) come from the Bun server; Caddy
+# passes them through and proxies the /wisp/ WebSocket upgrade as-is.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy webblox:8080
+}
