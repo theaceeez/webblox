@@ -169,5 +169,6 @@ Open `https://<your-domain>/blox/`.
 On the repo page: **Code → Codespaces → Create codespace on main**. When it
 opens, the server starts on port 8080 by itself and the engine downloads in the
 background (`/tmp/webblox-fetch.log`; `/tmp/webblox-server.log` for the server).
-In the **Ports** tab make 8080 **Public** if it isn't already, then open its
-URL. The codespace stops when idle; starting it again restarts the server.
+Port 8080 is made **Public** automatically within about a minute (log:
+`/tmp/webblox-port.log`), so its URL opens on any device without a GitHub
+login. If it stays private, set it in the **Ports** tab. The codespace stops when idle; starting it again restarts the server.
